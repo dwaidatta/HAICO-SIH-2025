@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Polaris Obfuscator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300..700&display=swap" rel="stylesheet">
+<style>
+/* ── tokens ── */
+:root,[data-theme="light"]{
+  --bg:#f7f6f2;--sur:#f9f8f5;--sur2:#fbfbf9;--surO:#f3f0ec;--surD:#e6e4df;
+  --brd:#d4d1ca;--div:#dcd9d5;
+  --tx:#28251d;--muted:#7a7974;--faint:#bab9b4;
+  --pri:#01696f;--prih:#0c4e54;--priHl:#cedcd8;
+  --ok:#437a22;--okHl:#d4dfcc;
+  --err:#a12c7b;--errHl:#e0ced7;
+  --warn:#964219;--warnHl:#ddcfc6;
+  --shSm:0 1px 2px oklch(0.2 0.01 80/.07);
+  --shMd:0 4px 14px oklch(0.2 0.01 80/.10);
+  --shLg:0 12px 36px oklch(0.2 0.01 80/.14);
+  --rSm:.375rem;--rMd:.5rem;--rLg:.75rem;--rXl:1rem;--rFull:9999px;
+  --ease:180ms cubic-bezier(.16,1,.3,1);
+  --font:'Inter','Helvetica Neue',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+[data-theme="dark"]{
+  --bg:#171614;--sur:#1c1b19;--sur2:#201f1d;--surO:#1d1c1a;--surD:#2d2c2a;
+  --brd:#393836;--div:#262523;
+  --tx:#cdccca;--muted:#797876;--faint:#5a5957;
+  --pri:#4f98a3;--prih:#227f8b;--priHl:#313b3b;
+  --ok:#6daa45;--okHl:#3a4435;
+  --err:#d163a7;--errHl:#4c3d46;
+  --warn:#bb653b;--warnHl:#564942;
+  --shSm:0 1px 2px oklch(0 0 0/.22);
+  --shMd:0 4px 14px oklch(0 0 0/.30);
+  --shLg:0 12px 36px oklch(0 0 0/.40);
+}
+
+/* ── reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{min-height:100dvh;font-family:var(--font);font-size:clamp(.875rem,.8rem+.35vw,1rem);
+     color:var(--tx);background:var(--bg);line-height:1.6}
+button{cursor:pointer;background:none;border:none;font:inherit;color:inherit}
+svg{display:block}
+a,button,input,select,textarea{
+  transition:color var(--ease),background var(--ease),border-color var(--ease),box-shadow var(--ease)}
+:focus-visible{outline:2px solid var(--pri);outline-offset:3px;border-radius:var(--rSm)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--brd);border-radius:var(--rFull)}
+
+/* ── topbar ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.75rem 1.5rem;background:var(--sur);
+  border-bottom:1px solid var(--brd);
+  position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:.75rem}
+.logo-name{font-size:clamp(1rem,.95rem+.25vw,1.125rem);font-weight:700;letter-spacing:-.025em}
+.pill{
+  display:inline-flex;align-items:center;padding:1px .5rem;
+  border-radius:var(--rFull);font-size:clamp(.75rem,.7rem+.25vw,.875rem);font-weight:600;
+}
+.pill-pri{background:var(--priHl);color:var(--pri)}
+.pill-ok {background:var(--okHl); color:var(--ok)}
+.pill-err{background:var(--errHl);color:var(--err)}
+.pill-warn{background:var(--warnHl);color:var(--warn)}
+.icon-btn{
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:var(--rMd);color:var(--muted);
+}
+.icon-btn:hover{background:var(--surD);color:var(--tx)}
+
+/* ── layout ── */
+.main{
+  display:grid;grid-template-columns:390px 1fr;gap:1.5rem;
+  padding:2rem 1.5rem;max-width:1400px;width:100%;margin:0 auto;align-items:start;
+}
+@media(max-width:860px){.main{grid-template-columns:1fr;padding:1rem}}
+
+/* ── panel ── */
+.panel{
+  background:var(--sur);border:1px solid var(--brd);
+  border-radius:var(--rXl);padding:1.5rem;box-shadow:var(--shSm);
+  display:flex;flex-direction:column;gap:1.25rem;
+  position:sticky;top:calc(56px + 1.5rem);
+}
+.panel-title{font-size:clamp(1rem,.95rem+.25vw,1.125rem);font-weight:700}
+.panel-sub{font-size:clamp(.75rem,.7rem+.25vw,.875rem);color:var(--muted);margin-top:.25rem}
+
+/* drop zone */
+.drop{
+  border:2px dashed var(--brd);border-radius:var(--rLg);
+  padding:2.5rem 1rem;
+  display:flex;flex-direction:column;align-items:center;gap:.75rem;
+  cursor:pointer;text-align:center;
+}
+.drop:hover,.drop.over{border-color:var(--pri);background:var(--priHl)}
+.drop input[type=file]{display:none}
+.drop-icon{color:var(--faint)}
+.drop.picked .drop-icon{color:var(--pri)}
+.drop-label{font-size:clamp(.875rem,.8rem+.35vw,1rem);font-weight:600}
+.drop-sub{font-size:clamp(.75rem,.7rem+.25vw,.875rem);color:var(--muted)}
+.file-chip{
+  display:none;font-family:var(--mono);font-size:clamp(.75rem,.7rem+.25vw,.875rem);
+  background:var(--priHl);color:var(--pri);padding:2px .5rem;border-radius:var(--rSm);
+}
+.drop.picked .file-chip{display:block}
+
+/* pipeline */
+.steps{display:flex;flex-direction:column;gap:.5rem}
+.step{
+  display:flex;align-items:center;gap:.75rem;
+  background:var(--surO);border-radius:var(--rMd);padding:.75rem;
+  font-size:clamp(.75rem,.7rem+.25vw,.875rem);
+}
+.step-n{
+  width:22px;height:22px;flex-shrink:0;background:var(--surD);color:var(--muted);
+  border-radius:var(--rFull);display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:.65rem;
+}
+.step-info{color:var(--muted)}
+.step-info strong{display:block;color:var(--tx);margin-bottom:1px}
+
+/* button */
+.btn-run{
+  display:flex;align-items:center;justify-content:center;gap:.5rem;
+  padding:.75rem 1.25rem;background:var(--pri);color:#fff;
+  border-radius:var(--rMd);font-weight:700;font-size:clamp(.875rem,.8rem+.35vw,1rem);
+  width:100%;
+}
+.btn-run:hover{background:var(--prih)}
+.btn-run:disabled{opacity:.45;cursor:not-allowed}
+
+/* alert */
+.alert{
+  display:flex;align-items:flex-start;gap:.5rem;
+  padding:.75rem 1rem;border-radius:var(--rMd);
+  font-size:clamp(.75rem,.7rem+.25vw,.875rem);
+}
+.alert-err{background:var(--errHl);color:var(--err)}
+.alert-ok {background:var(--okHl); color:var(--ok)}
+
+/* ── results ── */
+.results{display:flex;flex-direction:column;gap:1.25rem}
+.empty-state{
+  background:var(--sur);border:1px solid var(--brd);border-radius:var(--rXl);
+  box-shadow:var(--shSm);display:flex;flex-direction:column;align-items:center;
+  padding:4rem 2rem;gap:1rem;color:var(--muted);text-align:center;
+}
+.empty-state svg{color:var(--faint)}
+.empty-state h3{color:var(--tx);font-size:clamp(1rem,.95rem+.25vw,1.125rem);font-weight:700}
+.empty-state p{font-size:clamp(.75rem,.7rem+.25vw,.875rem);max-width:32ch}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.stat{background:var(--sur);border:1px solid var(--brd);border-radius:var(--rLg);padding:1rem;box-shadow:var(--shSm)}
+.stat-label{font-size:clamp(.75rem,.7rem+.25vw,.875rem);color:var(--muted);margin-bottom:.25rem}
+.stat-val{font-size:clamp(1.125rem,1rem+.75vw,1.5rem);font-weight:800;font-variant-numeric:tabular-nums}
+.stat-delta{font-size:clamp(.75rem,.7rem+.25vw,.875rem);font-weight:400;margin-left:.25rem}
+.stat-sub{font-size:clamp(.75rem,.7rem+.25vw,.875rem);color:var(--faint);margin-top:2px}
+
+/* polaris log */
+.log-box{
+  font-family:var(--mono);font-size:.7rem;line-height:1.6;
+  background:var(--okHl);color:var(--ok);
+  border-radius:var(--rMd);padding:.75rem 1rem;white-space:pre-wrap;word-break:break-all;
+}
+
+/* downloads */
+.downloads{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+.dl{
+  background:var(--sur);border:1px solid var(--brd);
+  border-radius:var(--rLg);padding:1rem;
+  display:flex;flex-direction:column;gap:.75rem;box-shadow:var(--shSm);
+}
+.dl.s-ok  {border-color:var(--ok)}
+.dl.s-err {border-color:var(--err);opacity:.8}
+.dl-head{display:flex;align-items:center;gap:.5rem;font-size:clamp(.75rem,.7rem+.25vw,.875rem);font-weight:700}
+.dl-log{
+  font-family:var(--mono);font-size:.68rem;
+  background:var(--surO);border-radius:var(--rSm);padding:.5rem;
+  max-height:72px;overflow-y:auto;color:var(--muted);
+}
+.btn-dl{
+  display:flex;align-items:center;justify-content:center;gap:.5rem;
+  padding:.5rem 1rem;background:var(--pri);color:#fff;
+  border-radius:var(--rSm);font-size:clamp(.75rem,.7rem+.25vw,.875rem);font-weight:700;
+  text-decoration:none;
+}
+.btn-dl:hover{background:var(--prih)}
+
+/* tabs */
+.tab-bar{
+  display:flex;gap:2px;background:var(--surO);
+  border-radius:var(--rLg);padding:3px;width:fit-content;flex-wrap:wrap;
+}
+.tab{
+  padding:.5rem 1rem;border-radius:calc(var(--rLg) - 3px);
+  font-size:clamp(.75rem,.7rem+.25vw,.875rem);font-weight:600;color:var(--muted);
+}
+.tab.on{background:var(--sur);color:var(--tx);box-shadow:var(--shSm)}
+.tab:hover:not(.on){color:var(--tx)}
+.tab-pane{display:none}
+.tab-pane.on{display:block}
+
+/* code card */
+.code-card{
+  background:var(--sur);border:1px solid var(--brd);
+  border-radius:var(--rXl);overflow:hidden;box-shadow:var(--shSm);
+}
+.code-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.75rem 1rem;background:var(--surO);border-bottom:1px solid var(--brd);
+}
+.code-title{
+  font-size:clamp(.75rem,.7rem+.25vw,.875rem);font-weight:700;
+  display:flex;align-items:center;gap:.5rem;
+}
+.code-body{
+  font-family:var(--mono);font-size:.72rem;line-height:1.75;
+  padding:1rem;overflow-x:auto;max-height:420px;overflow-y:auto;
+  color:var(--tx);white-space:pre;
+}
+.copy-btn{
+  font-size:clamp(.75rem,.7rem+.25vw,.875rem);color:var(--muted);
+  padding:2px .75rem;border:1px solid var(--brd);border-radius:var(--rSm);
+}
+.copy-btn:hover{color:var(--tx);border-color:var(--pri)}
+
+/* diff */
+.diff-wrap{max-height:420px;overflow-y:auto;padding:.5rem 0}
+.dl-line{padding:0 1rem;font-family:var(--mono);font-size:.7rem;line-height:1.7;white-space:pre}
+.dl-line.add{background:color-mix(in oklab,var(--ok) 13%,transparent);color:var(--ok)}
+.dl-line.del{background:color-mix(in oklab,var(--err) 13%,transparent);color:var(--err)}
+.dl-line.meta{color:var(--faint);font-style:italic}
+
+/* section label */
+.sec-lbl{
+  font-size:clamp(.75rem,.7rem+.25vw,.875rem);font-weight:700;
+  color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:.75rem;
+}
+
+/* progress overlay */
+.overlay{
+  position:fixed;inset:0;background:oklch(0 0 0/.55);
+  display:flex;align-items:center;justify-content:center;
+  z-index:200;backdrop-filter:blur(4px);
+  opacity:0;pointer-events:none;transition:opacity var(--ease);
+}
+.overlay.show{opacity:1;pointer-events:all}
+.prog-box{
+  background:var(--sur);border:1px solid var(--brd);
+  border-radius:var(--rXl);padding:2.5rem 2rem;
+  display:flex;flex-direction:column;align-items:center;gap:1rem;
+  box-shadow:var(--shLg);min-width:260px;text-align:center;
+}
+.spinner{
+  width:38px;height:38px;border:3px solid var(--brd);
+  border-top-color:var(--pri);border-radius:var(--rFull);
+  animation:spin .75s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.prog-step{font-size:clamp(.75rem,.7rem+.25vw,.875rem);color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- topbar -->
+<header class="topbar">
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-label="Polaris logo" style="color:var(--pri)">
+      <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" stroke="currentColor" stroke-width="1.6"/>
+      <polygon points="14,8 20,11 20,17 14,20 8,17 8,11" stroke="currentColor" stroke-width="1.4" opacity=".5"/>
+      <circle cx="14" cy="14" r="2.4" fill="currentColor"/>
+    </svg>
+    <span class="logo-name">Polaris Obfuscator</span>
+    <span class="pill pill-pri">Hackathon</span>
+  </div>
+  <button class="icon-btn" data-theme-toggle aria-label="Toggle theme">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+</header>
+
+<div class="main">
+
+  <!-- upload panel -->
+  <aside>
+    <div class="panel">
+      <div>
+        <div class="panel-title">Obfuscate Source File</div>
+        <div class="panel-sub">Upload a .c or .cpp file — runs AI junk injection → Polaris obfuscation → compilation.</div>
+      </div>
+
+      <div class="drop" id="dropZone">
+        <input type="file" id="fileInput" accept=".c,.cpp,.cc,.cxx">
+        <div class="drop-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+        <span class="drop-label">Drop your C / C++ file here</span>
+        <span class="drop-sub">or click to browse — max 5 MB</span>
+        <span class="file-chip" id="fileChip"></span>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-n">1</div>
+          <div class="step-info"><strong>AI Junk Injection</strong>Dead loops &amp; dummy symbols via Gemini</div>
+        </div>
+        <div class="step">
+          <div class="step-n">2</div>
+          <div class="step-info"><strong>Polaris Obfuscation</strong>Symbol renaming &amp; control-flow mangling</div>
+        </div>
+        <div class="step">
+          <div class="step-n">3</div>
+          <div class="step-info"><strong>Compilation</strong>Linux .bin + Windows .exe output</div>
+        </div>
+        <div class="step">
+          <div class="step-n">4</div>
+          <div class="step-info"><strong>Comparison Report</strong>Diff analysis &amp; line / char statistics</div>
+        </div>
+      </div>
+
+      <button class="btn-run" id="runBtn" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Run Obfuscation Pipeline
+      </button>
+
+      <div id="alertBox"></div>
+    </div>
+  </aside>
+
+  <!-- results -->
+  <section class="results" id="results">
+    <div class="empty-state" id="emptyState">
+      <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>
+      </svg>
+      <h3>Nothing yet</h3>
+      <p>Upload a C or C++ file and run the pipeline to see the full comparison report.</p>
+    </div>
+  </section>
+
+</div>
+
+<!-- progress overlay -->
+<div class="overlay" id="overlay">
+  <div class="prog-box">
+    <div class="spinner"></div>
+    <div style="font-weight:700;font-size:clamp(1rem,.95rem+.25vw,1.125rem)">Processing…</div>
+    <div class="prog-step" id="progStep">Uploading file</div>
+  </div>
+</div>
+
+<script>
+/* ── theme toggle ── */
+(function(){
+  const btn=document.querySelector('[data-theme-toggle]'),root=document.documentElement;
+  let d=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  root.setAttribute('data-theme',d);
+  const moon='<svg width="18" height="18" viewBox="0 
