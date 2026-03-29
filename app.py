@@ -177,23 +177,22 @@ def obfuscate():
     # Step 4 — Report
     report = build_report(original_code, ai_code, obfuscated_code)
 
-    return jsonify({
-        "status": "success",
-        "polaris_log": polaris_log,
-        "compile": {
+    return render_template("index.html",
+        report=report,
+        polaris_log=polaris_log,
+        compile={
             "bin": {
-                "success":  compile_res["bin"]["success"],
-                "log":      compile_res["bin"]["log"],
+                "success": compile_res["bin"]["success"],
+                "log": compile_res["bin"]["log"],
                 "download": f"/download/{base}.bin" if compile_res["bin"]["success"] else None,
             },
             "exe": {
-                "success":  compile_res["exe"]["success"],
-                "log":      compile_res["exe"]["log"],
+                "success": compile_res["exe"]["success"],
+                "log": compile_res["exe"]["log"],
                 "download": f"/download/{base}.exe" if compile_res["exe"]["success"] else None,
             },
-        },
-        "report": report,
-    })
+        }
+    )
 
 
 @app.route("/download/<path:filename>")
