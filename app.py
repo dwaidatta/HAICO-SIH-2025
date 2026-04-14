@@ -1,18 +1,11 @@
 """
-app.py
-======
-Flask backend for the Polaris Obfuscator Web UI.
-
-Routes
-------
-GET  /                      Serve frontend
-POST /upload                Accept source file + options, run pipeline
-GET  /status/<job_id>       Poll job status
-GET  /report/<job_id>       Full JSON report
-GET  /download/<job_id>     Download obfuscated binary
+app.py — Flask backend with logging + richer status endpoint
 """
 
-import json
+from dotenv import load_dotenv
+load_dotenv()
+
+import logging
 import os
 import threading
 import uuid
@@ -25,43 +18,58 @@ import obfuscator
 import report as report_builder
 import config
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = config.UPLOAD_FOLDER
 os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 
-# In-memory job store  { job_id: { "status": str, "report": dict | None } }
 _jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+def _set_status(job_id: str, status: str, detail: str = ""):
+    with _jobs_lock:
+        _jobs[job_id]["status"] = status
+        _jobs[job_id]["detail"] = detail
+    logger.info("Job %s  ->  %s  %s", job_id[:8], status, detail)
+
 
 def _allowed(filename: str) -> bool:
     return Path(filename).suffix.lower() in config.ALLOWED_EXTS
 
 
 def _run_pipeline(job_id: str, src_path: str, filename: str, passes: str):
-    """Background thread: AI enhance → obfuscate → build report."""
     job_dir = str(Path(config.UPLOAD_FOLDER) / job_id)
 
     try:
-        # ── 1. AI Enhancement ─────────────────────────────────────────────────
-        with _jobs_lock:
-            _jobs[job_id]["status"] = "ai_enhancing"
+        # 1. AI Enhancement
+        _set_status(job_id, "ai_enhancing", "Sending source to Gemini...")
 
         with open(src_path, "r", errors="replace") as f:
             original_source = f.read()
 
         ai_result = ai_enhancer.enhance(original_source, filename)
 
-        # Write enhanced source to disk (used for compilation)
+        if ai_result["error"]:
+            logger.warning("AI enhancement failed for job %s: %s",
+                           job_id[:8], ai_result["error"])
+            _set_status(job_id, "ai_enhancing",
+                        f"AI failed ({ai_result['error'][:80]}), using original source")
+        else:
+            _set_status(job_id, "ai_enhancing", "Gemini returned enhanced source")
+
         enhanced_path = str(Path(job_dir) / f"enhanced_{filename}")
         with open(enhanced_path, "w") as f:
             f.write(ai_result["enhanced_source"])
 
-        # ── 2. Obfuscation ────────────────────────────────────────────────────
-        with _jobs_lock:
-            _jobs[job_id]["status"] = "compiling"
+        # 2. Compilation
+        _set_status(job_id, "compiling", "Running Polaris clang...")
 
         obfu_result = obfuscator.run_pipeline(
             src=enhanced_path,
@@ -69,7 +77,18 @@ def _run_pipeline(job_id: str, src_path: str, filename: str, passes: str):
             passes=passes,
         )
 
-        # ── 3. Build Report ───────────────────────────────────────────────────
+        if obfu_result.get("error"):
+            _set_status(job_id, "error", obfu_result["error"][:120])
+            with _jobs_lock:
+                _jobs[job_id]["report"] = report_builder.build(
+                    ai_result=ai_result,
+                    obfu_result=obfu_result,
+                    original_filename=filename,
+                    passes_used=passes or config.DEFAULT_PASSES,
+                )
+            return
+
+        # 3. Report
         final_report = report_builder.build(
             ai_result=ai_result,
             obfu_result=obfu_result,
@@ -79,18 +98,21 @@ def _run_pipeline(job_id: str, src_path: str, filename: str, passes: str):
 
         with _jobs_lock:
             _jobs[job_id]["status"] = "done"
+            _jobs[job_id]["detail"] = "Pipeline complete"
             _jobs[job_id]["report"] = final_report
 
+        logger.info("Job %s done — verdict=%s", job_id[:8], final_report.get("verdict"))
+
     except Exception as exc:
+        logger.exception("Unhandled exception in pipeline for job %s", job_id[:8])
         with _jobs_lock:
             _jobs[job_id]["status"] = "error"
+            _jobs[job_id]["detail"] = str(exc)
             _jobs[job_id]["report"] = {
                 "verdict": "ERROR",
                 "error":   str(exc),
             }
 
-
-# ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def index():
@@ -101,7 +123,6 @@ def index():
 def upload():
     if "file" not in request.files:
         return jsonify({"error": "No file part"}), 400
-
     f = request.files["file"]
     if not f.filename or not _allowed(f.filename):
         return jsonify({"error": "Only .c and .cpp files are accepted"}), 400
@@ -111,21 +132,19 @@ def upload():
     job_dir = Path(config.UPLOAD_FOLDER) / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save original upload
     src_path = str(job_dir / f.filename)
     f.save(src_path)
+    logger.info("Uploaded %s -> job %s  passes=%s", f.filename, job_id[:8], passes)
 
     with _jobs_lock:
-        _jobs[job_id] = {"status": "queued", "report": None}
+        _jobs[job_id] = {"status": "queued", "detail": "Job created", "report": None}
 
-    # Kick off background pipeline
     t = threading.Thread(
         target=_run_pipeline,
         args=(job_id, src_path, f.filename, passes),
         daemon=True,
     )
     t.start()
-
     return jsonify({"job_id": job_id}), 202
 
 
@@ -135,7 +154,11 @@ def status(job_id: str):
         job = _jobs.get(job_id)
     if job is None:
         return jsonify({"error": "Job not found"}), 404
-    return jsonify({"job_id": job_id, "status": job["status"]})
+    return jsonify({
+        "job_id": job_id,
+        "status": job["status"],
+        "detail": job.get("detail", ""),
+    })
 
 
 @app.get("/report/<job_id>")
@@ -157,11 +180,9 @@ def download(job_id: str):
         return jsonify({"error": "Job not found"}), 404
     if job["status"] != "done":
         return jsonify({"error": "Not ready"}), 202
-
     obfu_bin = Path(config.UPLOAD_FOLDER) / job_id / "obfu_out"
     if not obfu_bin.exists():
         return jsonify({"error": "Binary not found"}), 404
-
     return send_file(
         str(obfu_bin),
         as_attachment=True,
@@ -170,11 +191,10 @@ def download(job_id: str):
     )
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
-
 if __name__ == "__main__":
     app.run(
         host=config.FLASK_HOST,
         port=config.FLASK_PORT,
         debug=config.FLASK_DEBUG,
+        use_reloader=False,
     )

@@ -1,164 +1,239 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HAICO Obfuscator</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <title>Polaris Obfuscator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/main.css" />
 </head>
 <body>
 
-  <div class="background-glow"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
 
   <div class="container">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
     <header class="app-header">
       <div class="logo">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="logo-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-        <h1>HAICO <span class="highlight">Obfuscator</span></h1>
+        <svg class="logo-icon" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/>
+        </svg>
+        <h1>Polaris <span class="accent">Obfuscator</span></h1>
       </div>
-      <p class="subtitle">Hybrid AI-Enabled Code Obfuscator</p>
+      <p class="tagline">AI-Enhanced · LLVM-Powered · Hackathon Edition</p>
     </header>
 
-    <main>
-      <section class="card upload-section">
-        <div class="card-header">
-          <h2>Secure Your Source Code</h2>
-          <p>Upload a C/C++ file to inject AI junk and obfuscate.</p>
+    <!-- ── Upload card ─────────────────────────────────────────────────────── -->
+    <section class="card upload-card" id="uploadCard">
+      <div class="card-title">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+        </svg>
+        <h2>Upload Source File</h2>
+      </div>
+      <p class="card-sub">Drop a <code>.c</code> or <code>.cpp</code> file — the AI layer annotates it, then Polaris obfuscates it.</p>
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="dropZone">
+        <svg class="drop-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9z"/>
+        </svg>
+        <p class="drop-text">Drag & drop your file here</p>
+        <p class="drop-hint">or click to browse</p>
+        <p class="file-chosen" id="fileChosen" hidden></p>
+        <input type="file" id="fileInput" accept=".c,.cpp,.cc,.cxx" class="file-input" aria-label="Choose source file" />
+      </div>
+
+      <!-- Passes -->
+      <div class="passes-section">
+        <p class="passes-label">Obfuscation Passes</p>
+        <div class="passes-grid">
+          <label class="pass-chip"><input type="checkbox" value="fla"     checked /><span>Control Flow Flattening</span></label>
+          <label class="pass-chip"><input type="checkbox" value="gvenc"   checked /><span>String Encryption</span></label>
+          <label class="pass-chip"><input type="checkbox" value="indcall" checked /><span>Indirect Call</span></label>
+          <label class="pass-chip"><input type="checkbox" value="indbr"   checked /><span>Indirect Branch</span></label>
+          <label class="pass-chip"><input type="checkbox" value="alias"   checked /><span>Alias Access</span></label>
+          <label class="pass-chip"><input type="checkbox" value="bcf"     checked /><span>Bogus Control Flow</span></label>
+          <label class="pass-chip"><input type="checkbox" value="sub"     checked /><span>Instruction Substitution</span></label>
+          <label class="pass-chip"><input type="checkbox" value="mba"     checked /><span>Linear MBA</span></label>
         </div>
-        <form method="POST" action="/obfuscate" enctype="multipart/form-data" class="upload-form">
-          <div class="file-drop-area">
-            <svg class="upload-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"></path></svg>
-            <span class="file-msg">Choose a .c or .cpp file or drag it here</span>
-            <input type="file" id="file" name="file" accept=".c,.cpp,.cc,.cxx" required class="file-input" />
-          </div>
-          <button type="submit" class="btn-primary">
-            <span>Run Pipeline</span>
-            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"></path></svg>
-          </button>
-        </form>
-        {% if error %}
-          <div class="alert alert-error">{{ error }}</div>
-        {% endif %}
-      </section>
+      </div>
 
-      {% if report %}
-      <section class="results">
-        <div class="grid-layout">
-          <!-- Stats Card -->
-          <div class="card stats-card">
-            <h2>Pipeline Statistics</h2>
-            <div class="stats-table-wrapper">
-              <table class="modern-table">
-                <thead>
-                  <tr>
-                    <th>Stage</th>
-                    <th>Lines</th>
-                    <th>Chars</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><span class="badge badge-gray">Original</span></td>
-                    <td>{{ report.original_stats.lines }}</td>
-                    <td>{{ report.original_stats.chars }}</td>
-                  </tr>
-                  <tr>
-                    <td><span class="badge badge-purple">AI Junk</span></td>
-                    <td>{{ report.ai_modified_stats.lines }}</td>
-                    <td>{{ report.ai_modified_stats.chars }}</td>
-                  </tr>
-                  <tr>
-                    <td><span class="badge badge-green">Obfuscated</span></td>
-                    <td>{{ report.obfuscated_stats.lines }}</td>
-                    <td>{{ report.obfuscated_stats.chars }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+      <!-- Error banner -->
+      <div class="alert alert-error" id="uploadError" hidden></div>
 
-          <!-- Downloads Card -->
-          <div class="card downloads-card">
-            <h2>Compiled Artifacts</h2>
-            <div class="downloads-grid">
-              <div class="download-item {% if compile.bin.success %}success{% else %}failed{% endif %}">
-                <div class="dl-header">
-                  <svg class="os-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-                  <strong>Linux Executable</strong>
-                </div>
-                <div class="dl-log">{{ compile.bin.log }}</div>
-                {% if compile.bin.success %}
-                  <a href="{{ compile.bin.download }}" class="btn-secondary">Download .bin</a>
-                {% endif %}
+      <!-- Submit -->
+      <button class="btn-primary" id="submitBtn" disabled>
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/>
+        </svg>
+        Run Pipeline
+      </button>
+    </section>
+
+    <!-- ── Progress card (hidden until job starts) ─────────────────────────── -->
+    <section class="card progress-card" id="progressCard" hidden>
+      <div class="card-title">
+        <svg class="spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+        </svg>
+        <h2 id="progressTitle">Starting pipeline…</h2>
+      </div>
+      <div class="progress-steps" id="progressSteps">
+        <div class="step" id="step-queued">
+          <span class="step-dot"></span><span class="step-label">Queued</span>
+        </div>
+        <div class="step" id="step-ai_enhancing">
+          <span class="step-dot"></span><span class="step-label">AI Enhancement (Gemini)</span>
+        </div>
+        <div class="step" id="step-compiling">
+          <span class="step-dot"></span><span class="step-label">Polaris Compilation</span>
+        </div>
+        <div class="step" id="step-done">
+          <span class="step-dot"></span><span class="step-label">Report Ready</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Results (hidden until done) ────────────────────────────────────────── -->
+    <section id="resultsSection" hidden>
+
+      <!-- Verdict banner -->
+      <div class="verdict-banner" id="verdictBanner">
+        <div class="verdict-icon" id="verdictIcon"></div>
+        <div>
+          <p class="verdict-title" id="verdictTitle"></p>
+          <p class="verdict-detail" id="verdictDetail"></p>
+        </div>
+        <button class="btn-ghost" id="resetBtn">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/>
+          </svg>
+          New File
+        </button>
+      </div>
+
+      <!-- Metrics + Download row -->
+      <div class="two-col">
+
+        <!-- Metrics card -->
+        <div class="card">
+          <div class="card-title">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
+            </svg>
+            <h2>Obfuscation Metrics</h2>
+          </div>
+          <table class="metrics-table" id="metricsTable">
+            <thead>
+              <tr><th>Metric</th><th>Plain</th><th>Obfuscated</th><th>Ratio</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="passes-used-line" id="passesUsedLine"></div>
+        </div>
+
+        <!-- Download card -->
+        <div class="card">
+          <div class="card-title">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+            <h2>Download</h2>
+          </div>
+          <div class="download-block" id="downloadBlock">
+            <div class="dl-row">
+              <div class="dl-info">
+                <p class="dl-name" id="dlName">obfuscated_binary</p>
+                <p class="dl-meta" id="dlMeta"></p>
               </div>
-
-              <div class="download-item {% if compile.exe.success %}success{% else %}failed{% endif %}">
-                <div class="dl-header">
-                  <svg class="os-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                  <strong>Windows Executable</strong>
-                </div>
-                <div class="dl-log">{{ compile.exe.log }}</div>
-                {% if compile.exe.success %}
-                  <a href="{{ compile.exe.download }}" class="btn-secondary">Download .exe</a>
-                {% endif %}
+              <a class="btn-download" id="dlBtn" href="#" download="obfuscated_binary">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                </svg>
+                Download Binary
+              </a>
+            </div>
+            <div class="entropy-bar-wrap">
+              <div class="entropy-label-row">
+                <span class="entropy-label">Entropy</span>
+                <span class="entropy-vals" id="entropyVals"></span>
+              </div>
+              <div class="entropy-track">
+                <div class="entropy-bar plain-bar"  id="plainBar"></div>
+              </div>
+              <div class="entropy-track">
+                <div class="entropy-bar obfu-bar"   id="obfuBar"></div>
+              </div>
+              <div class="entropy-legend">
+                <span><span class="dot plain-dot"></span>Plain</span>
+                <span><span class="dot obfu-dot"></span>Obfuscated</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="card log-card">
-          <h2>Compiler & Obfuscator Logs</h2>
-          <div class="terminal-mock">
-            <div class="terminal-header">
-              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
-            </div>
-            <pre class="terminal-body">{{ polaris_log }}</pre>
-          </div>
-        </div>
+      </div><!-- /two-col -->
 
-        <div class="card diff-card">
-          <div class="diff-header">
-            <h2>Code Comparison</h2>
-            <div class="tab-bar" id="tabBar">
-              <button class="tab active" data-target="pane-orig">Original</button>
-              <button class="tab" data-target="pane-ai">AI Phase</button>
-              <button class="tab" data-target="pane-obf">Obfuscated</button>
-              <button class="tab" data-target="pane-diff1">Diff (Orig → AI)</button>
-              <button class="tab" data-target="pane-diff2">Diff (AI → Final)</button>
+      <!-- Output comparison (terminal) -->
+      <div class="card">
+        <div class="card-title">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z"/>
+          </svg>
+          <h2>Program Output</h2>
+          <span class="output-match-badge" id="outputMatchBadge"></span>
+        </div>
+        <div class="terminals-row">
+          <div class="terminal-wrap">
+            <p class="terminal-label">Plain Binary</p>
+            <div class="terminal">
+              <div class="terminal-bar"><span class="tdot r"></span><span class="tdot y"></span><span class="tdot g"></span></div>
+              <pre class="terminal-body" id="plainOutput"></pre>
             </div>
           </div>
-          
-          <div class="code-panes">
-            <div id="pane-orig" class="tab-pane active fade-in">
-              <pre><code>{{ report.original_snippet }}</code></pre>
-            </div>
-            <div id="pane-ai" class="tab-pane fade-in">
-              <pre><code>{{ report.ai_snippet }}</code></pre>
-            </div>
-            <div id="pane-obf" class="tab-pane fade-in">
-              <pre><code>{{ report.obfuscated_snippet }}</code></pre>
-            </div>
-            <div id="pane-diff1" class="tab-pane fade-in">
-              <pre><code>{{ report.original_vs_ai_diff | join('\n') }}</code></pre>
-            </div>
-            <div id="pane-diff2" class="tab-pane fade-in">
-              <pre><code>{{ report.ai_vs_obfuscated_diff | join('\n') }}</code></pre>
+          <div class="terminal-wrap">
+            <p class="terminal-label">Obfuscated Binary</p>
+            <div class="terminal">
+              <div class="terminal-bar"><span class="tdot r"></span><span class="tdot y"></span><span class="tdot g"></span></div>
+              <pre class="terminal-body" id="obfuOutput"></pre>
             </div>
           </div>
         </div>
-      </section>
-      {% endif %}
+      </div>
 
-    </main>
-    
+      <!-- Code diff tabs -->
+      <div class="card">
+        <div class="card-title-row">
+          <div class="card-title">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/>
+            </svg>
+            <h2>Source Code</h2>
+          </div>
+          <div class="tab-bar" role="tablist">
+            <button class="tab active" data-pane="paneOrig"    role="tab" aria-selected="true">Original</button>
+            <button class="tab"        data-pane="paneAI"      role="tab">AI Enhanced</button>
+          </div>
+        </div>
+        <div class="pane active" id="paneOrig"><pre class="code-block" id="origCode"></pre></div>
+        <div class="pane"        id="paneAI"  ><pre class="code-block" id="aiCode"></pre></div>
+      </div>
+
+    </section><!-- /resultsSection -->
+
     <footer>
-      <p>&copy; 2025 ByteRoots - Smart India Hackathon</p>
+      <p>Polaris Obfuscator &copy; 2025 &nbsp;·&nbsp; Smart India Hackathon &nbsp;·&nbsp; ByteRoots</p>
     </footer>
-  </div>
 
-  <script src="{{ url_for('static', filename='tabs.js') }}" defer></script>
+  </div><!-- /container -->
+
+  <script src="/static/main.js" defer></script>
 </body>
 </html>
