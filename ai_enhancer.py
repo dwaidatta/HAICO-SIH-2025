@@ -9,13 +9,14 @@ Sends raw C/C++ source to Gemini and gets back:
 
 Returns
 -------
-  enhanced_source : str   — modified C/C++ source ready for Polaris clang
-  ai_diff         : dict  — {"original": str, "enhanced": str}  for the UI
-  error           : str | None
+  {
+    "enhanced_source": str,
+    "original_source": str,
+    "error": str | None
+  }
 """
 
-import os
-import google.generativeai as genai
+from google import genai
 import config
 
 # ── System prompt ─────────────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ Your job is to modify source code so that:
      indirectcall    - for functions that call other functions
      indirectbr      - for functions with complex branching
      linearmba       - for functions with bitwise operations
-   You can combine multiple: annotate("flattening,substitution,boguscfg")
+   Combine multiple passes like: annotate("flattening,substitution,boguscfg")
 
 2. BACKEND OBFUSCATION MARKER
    Inside main(), add this as the very first statement:
@@ -52,10 +53,10 @@ Your job is to modify source code so that:
 
 4. STRICT RULES
    - Do NOT change the program's observable output (stdout must be identical)
-   - Do NOT add/remove #include directives unless needed for the junk code
+   - Do NOT add/remove #include directives unless strictly needed for junk code
    - Do NOT rename functions or variables
    - Do NOT add a main() if one does not exist
-   - Return ONLY the raw C/C++ source code — no markdown, no explanation
+   - Return ONLY the raw C/C++ source code — no markdown fences, no explanation
 """
 
 
@@ -75,13 +76,12 @@ def enhance(source: str, filename: str) -> dict:
     }
     """
     result = {
-        "enhanced_source": source,   # fallback = unchanged
+        "enhanced_source": source,   # fallback = unchanged source
         "original_source": source,
         "error": None,
     }
 
-    api_key = config.GEMINI_API_KEY
-    if not api_key:
+    if not config.GEMINI_API_KEY:
         result["error"] = "GEMINI_API_KEY not set in environment"
         return result
 
@@ -89,26 +89,29 @@ def enhance(source: str, filename: str) -> dict:
     user_msg  = (
         f"Enhance the following {lang_hint} source file named '{filename}' "
         f"according to your instructions.\n\n"
-        f"```\n{source}\n```"
+        f"{source}"
     )
 
     try:
-        genai.configure(api_key=api_key)
-        model    = genai.GenerativeModel(
-            model_name=config.GEMINI_MODEL,
-            system_instruction=_SYSTEM,
-        )
-        response = model.generate_content(user_msg)
-        text     = response.text.strip()
+        client = genai.Client(api_key=config.GEMINI_API_KEY)
 
-        # Strip accidental markdown fences if Gemini adds them
+        response = client.models.generate_content(
+            model=config.GEMINI_MODEL,
+            contents=user_msg,
+            config=genai.types.GenerateContentConfig(
+                system_instruction=_SYSTEM,
+                temperature=0.2,        # low temp = more deterministic / safe output
+            ),
+        )
+
+        text = response.text.strip()
+
+        # Strip accidental markdown fences if Gemini still adds them
         if text.startswith("```"):
             lines = text.splitlines()
-            # Remove first fence line (```c / ```cpp / ```)
-            lines = lines[1:]
-            # Remove last fence if present
+            lines = lines[1:]                                    # drop opening fence
             if lines and lines[-1].strip().startswith("```"):
-                lines = lines[:-1]
+                lines = lines[:-1]                               # drop closing fence
             text = "\n".join(lines)
 
         result["enhanced_source"] = text
